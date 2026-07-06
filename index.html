@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Рулилка — обновление прошивки</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --card: #1d2027;
+    --border: #2c3038;
+    --text: #e8e9ec;
+    --text-dim: #9aa0aa;
+    --accent: #ff6a1a;
+    --accent-dim: #7a3812;
+    --ok: #3ecf6e;
+    --err: #ff5555;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .wrap { width: 100%; max-width: 520px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--text-dim); font-size: 14px; margin-bottom: 24px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+    margin: 0 0 14px;
+  }
+  details.card summary {
+    cursor: pointer;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+    list-style: none;
+  }
+  details.card summary::-webkit-details-marker { display: none; }
+  details.card[open] summary { margin-bottom: 14px; }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .row { display: flex; align-items: flex-start; margin-bottom: 10px; font-size: 14px; }
+  .row:last-child { margin-bottom: 0; }
+  button {
+    width: 100%;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #1a0d04; }
+  .btn-primary:not(:disabled):hover { opacity: 0.9; }
+  .btn-secondary { background: #2a2e37; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:not(:disabled):hover { background: #333947; }
+  input[type=file] {
+    width: 100%;
+    padding: 10px;
+    background: #14161a;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .file-info { margin-top: 10px; font-size: 13px; color: var(--text-dim); font-family: ui-monospace, monospace; }
+  .status-line { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot-off { background: #555; }
+  .dot-on { background: var(--ok); }
+  .version-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+  .version-row .label { color: var(--text-dim); }
+  .version-note { font-size: 13px; color: var(--text-dim); margin: 10px 0 14px; line-height: 1.5; }
+  .version-note.ok { color: var(--ok); }
+  .version-note.new { color: var(--accent); }
+  .progress-outer { height: 10px; border-radius: 6px; background: #14161a; overflow: hidden; margin: 12px 0 4px; }
+  .progress-inner { height: 100%; width: 0%; background: var(--accent); transition: width 0.15s; }
+  .progress-pct { font-size: 12px; color: var(--text-dim); text-align: right; }
+  #log {
+    margin-top: 14px;
+    background: #0e0f12;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    max-height: 180px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .warn {
+    background: #2a1d0f;
+    border: 1px solid #5a3a12;
+    color: #ffb877;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .success-banner {
+    background: #0f2a1a;
+    border: 1px solid #1e5a3a;
+    color: #6be89a;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    display: none;
+  }
+  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mode-btn {
+    padding: 14px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #2a2e37;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+  }
+  .mode-btn:hover:not(:disabled) { background: #333947; }
+  .mode-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .mode-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Обновление прошивки Рулилки</h1>
+  <div class="sub">Обновление по Bluetooth, прямо из браузера — без установки приложений.</div>
+
+  <div class="warn" id="browserWarn"></div>
+
+  <div class="card">
+    <h2>Перед началом</h2>
+    <div class="row"><span class="step-num">1</span> Устройство должно быть <b>включено</b> и находиться рядом (в пределах пары метров).</div>
+    <div class="row"><span class="step-num">2</span> На время обновления <b>отключи Zwift</b> от Рулилки (закрой приложение или выключи Bluetooth в самом Zwift) — во время передачи устройство должно быть свободно.</div>
+    <div class="row"><span class="step-num">3</span> Не выключай устройство и не закрывай эту страницу, пока идёт передача.</div>
+  </div>
+
+  <div class="card">
+    <h2>Подключение</h2>
+    <div class="status-line">
+      <span><span class="dot dot-off" id="connDot"></span><span id="connText">Не подключено</span></span>
+    </div>
+    <button class="btn-secondary" id="btnConnect">Найти устройство «Rulilka»</button>
+  </div>
+
+  <div class="card">
+    <h2>Версия прошивки</h2>
+    <div class="version-row"><span class="label">Установлена сейчас:</span><span id="verCurrent">—</span></div>
+    <div class="version-row"><span class="label">Доступна на сервере:</span><span id="verLatest">—</span></div>
+    <div class="version-note" id="verNote">Подключись к устройству, чтобы проверить.</div>
+    <button class="btn-primary" id="btnAutoUpdate" disabled>Скачать и установить последнюю версию</button>
+  </div>
+
+  <div class="card">
+    <h2>Режим запасной кнопки (LEFT+RIGHT)</h2>
+    <div class="version-note" id="modeNote">Подключись к устройству, чтобы посмотреть и изменить режим.</div>
+    <div class="mode-grid" id="modeGrid">
+      <button class="mode-btn" id="modeBtn0" disabled data-mode="0">Взгляд назад</button>
+      <button class="mode-btn" id="modeBtn1" disabled data-mode="1">Тормоз</button>
+      <button class="mode-btn" id="modeBtn2" disabled data-mode="2">PowerUp</button>
+      <button class="mode-btn" id="modeBtn3" disabled data-mode="3">Масслайк</button>
+    </div>
+  </div>
+
+  <details class="card">
+    <summary>Обновить вручную из файла (для теста/разработчика)</summary>
+    <input type="file" id="fwFile" accept=".bin">
+    <div class="file-info" id="fileInfo">Файл не выбран</div>
+    <div style="height:12px"></div>
+    <button class="btn-secondary" id="btnManualUpdate" disabled>Обновить из выбранного файла</button>
+  </details>
+
+  <div class="card">
+    <h2>Ход обновления</h2>
+    <div class="progress-outer"><div class="progress-inner" id="progressBar"></div></div>
+    <div class="progress-pct" id="progressPct">0%</div>
+    <div id="log"></div>
+  </div>
+
+  <div class="success-banner" id="successBanner">
+    Готово. Устройство перезагружается в новую прошивку и в течение ~30 секунд само проверит, что всё работает стабильно. Ничего делать не нужно — если новая прошивка не заработает, устройство автоматически вернётся на предыдущую рабочую версию.
+  </div>
+
+</div>
+
+<script>
+// ---- MD5 (встроенная реализация, без внешних зависимостей/CDN) ----
+// Классический общественно-доступный алгоритм (Joseph Myers), адаптирован под
+// Uint8Array. Сверен с Node.js crypto на граничных длинах (0/55/56/63/64/65
+// байт) и на реальном .bin-файле прошивки — см. tools/web_ota в приватном
+// репозитории с исходниками.
+function md5cycle(x, k) {
+  let a = x[0], b = x[1], c = x[2], d = x[3];
+  a = ff(a, b, c, d, k[0], 7, -680876936);
+  d = ff(d, a, b, c, k[1], 12, -389564586);
+  c = ff(c, d, a, b, k[2], 17, 606105819);
+  b = ff(b, c, d, a, k[3], 22, -1044525330);
+  a = ff(a, b, c, d, k[4], 7, -176418897);
+  d = ff(d, a, b, c, k[5], 12, 1200080426);
+  c = ff(c, d, a, b, k[6], 17, -1473231341);
+  b = ff(b, c, d, a, k[7], 22, -45705983);
+  a = ff(a, b, c, d, k[8], 7, 1770035416);
+  d = ff(d, a, b, c, k[9], 12, -1958414417);
+  c = ff(c, d, a, b, k[10], 17, -42063);
+  b = ff(b, c, d, a, k[11], 22, -1990404162);
+  a = ff(a, b, c, d, k[12], 7, 1804603682);
+  d = ff(d, a, b, c, k[13], 12, -40341101);
+  c = ff(c, d, a, b, k[14], 17, -1502002290);
+  b = ff(b, c, d, a, k[15], 22, 1236535329);
+  a = gg(a, b, c, d, k[1], 5, -165796510);
+  d = gg(d, a, b, c, k[6], 9, -1069501632);
+  c = gg(c, d, a, b, k[11], 14, 643717713);
+  b = gg(b, c, d, a, k[0], 20, -373897302);
+  a = gg(a, b, c, d, k[5], 5, -701558691);
+  d = gg(d, a, b, c, k[10], 9, 38016083);
+  c = gg(c, d, a, b, k[15], 14, -660478335);
+  b = gg(b, c, d, a, k[4], 20, -405537848);
+  a = gg(a, b, c, d, k[9], 5, 568446438);
+  d = gg(d, a, b, c, k[14], 9, -1019803690);
+  c = gg(c, d, a, b, k[3], 14, -187363961);
+  b = gg(b, c, d, a, k[8], 20, 1163531501);
+  a = gg(a, b, c, d, k[13], 5, -1444681467);
+  d = gg(d, a, b, c, k[2], 9, -51403784);
+  c = gg(c, d, a, b, k[7], 14, 1735328473);
+  b = gg(b, c, d, a, k[12], 20, -1926607734);
+  a = hh(a, b, c, d, k[5], 4, -378558);
+  d = hh(d, a, b, c, k[8], 11, -2022574463);
+  c = hh(c, d, a, b, k[11], 16, 1839030562);
+  b = hh(b, c, d, a, k[14], 23, -35309556);
+  a = hh(a, b, c, d, k[1], 4, -1530992060);
+  d = hh(d, a, b, c, k[4], 11, 1272893353);
+  c = hh(c, d, a, b, k[7], 16, -155497632);
+  b = hh(b, c, d, a, k[10], 23, -1094730640);
+  a = hh(a, b, c, d, k[13], 4, 681279174);
+  d = hh(d, a, b, c, k[0], 11, -358537222);
+  c = hh(c, d, a, b, k[3], 16, -722521979);
+  b = hh(b, c, d, a, k[6], 23, 76029189);
+  a = hh(a, b, c, d, k[9], 4, -640364487);
+  d = hh(d, a, b, c, k[12], 11, -421815835);
+  c = hh(c, d, a, b, k[15], 16, 530742520);
+  b = hh(b, c, d, a, k[2], 23, -995338651);
+  a = ii(a, b, c, d, k[0], 6, -198630844);
+  d = ii(d, a, b, c, k[7], 10, 1126891415);
+  c = ii(c, d, a, b, k[14], 15, -1416354905);
+  b = ii(b, c, d, a, k[5], 21, -57434055);
+  a = ii(a, b, c, d, k[12], 6, 1700485571);
+  d = ii(d, a, b, c, k[3], 10, -1894986606);
+  c = ii(c, d, a, b, k[10], 15, -1051523);
+  b = ii(b, c, d, a, k[1], 21, -2054922799);
+  a = ii(a, b, c, d, k[8], 6, 1873313359);
+  d = ii(d, a, b, c, k[15], 10, -30611744);
+  c = ii(c, d, a, b, k[6], 15, -1560198380);
+  b = ii(b, c, d, a, k[13], 21, 1309151649);
+  a = ii(a, b, c, d, k[4], 6, -145523070);
+  d = ii(d, a, b, c, k[11], 10, -1120210379);
+  c = ii(c, d, a, b, k[2], 15, 718787259);
+  b = ii(b, c, d, a, k[9], 21, -343485551);
+  x[0] = add32(a, x[0]);
+  x[1] = add32(b, x[1]);
+  x[2] = add32(c, x[2]);
+  x[3] = add32(d, x[3]);
+}
+function cmn(q, a, b, x, s, t) {
+  a = add32(add32(a, q), add32(x, t));
+  return add32((a << s) | (a >>> (32 - s)), b);
+}
+function ff(a, b, c, d, x, s, t) { return cmn((b & c) | (~b & d), a, b, x, s, t); }
+function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & ~d), a, b, x, s, t); }
+function hh(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t); }
+function ii(a, b, c, d, x, s, t) { return cmn(c ^ (b | ~d), a, b, x, s, t); }
+function add32(a, b) { return (a + b) & 0xffffffff; }
+function md5blk(bytes) {
+  const blks = [];
+  for (let i = 0; i < 64; i += 4) {
+    blks[i >> 2] = bytes[i] + (bytes[i + 1] << 8) + (bytes[i + 2] << 16) + (bytes[i + 3] << 24);
+  }
+  return blks;
+}
+function md5Bytes(bytes) {
+  const n = bytes.length;
+  const state = [1732584193, -271733879, -1732584194, 271733878];
+  let i;
+  for (i = 64; i <= n; i += 64) md5cycle(state, md5blk(bytes.subarray(i - 64, i)));
+  bytes = bytes.subarray(i - 64);
+  const tail = new Uint8Array(64).fill(0);
+  tail.set(bytes);
+  tail[bytes.length] = 0x80;
+  if (bytes.length > 55) { md5cycle(state, md5blk(tail)); tail.fill(0); }
+  const bitLen = n * 8;
+  tail[56] = bitLen & 0xff;
+  tail[57] = (bitLen >>> 8) & 0xff;
+  tail[58] = (bitLen >>> 16) & 0xff;
+  tail[59] = (bitLen >>> 24) & 0xff;
+  md5cycle(state, md5blk(tail));
+  const hex = [];
+  for (const s of state) for (let sh = 0; sh < 32; sh += 8) hex.push(((s >>> sh) & 0xff).toString(16).padStart(2, "0"));
+  return hex.join("");
+}
+function md5ArrayBuffer(buffer) { return md5Bytes(new Uint8Array(buffer)); }
+
+// ---- Проверка обновлений: этот же репозиторий на GitHub Pages ----
+const MANIFEST_URL = "https://vinsh01.github.io/rulilka-updates/manifest.json";
+
+// ---- Протокол OTA (совпадает с прошивкой, сервис c8a160f0-...-2f6a1b6d1000) ----
+const OTA_SVC_UUID     = "c8a160f0-0000-4e6a-9c1a-2f6a1b6d1000";
+const OTA_CH_CONTROL   = "c8a160f0-0002-4e6a-9c1a-2f6a1b6d1000";
+const OTA_CH_DATA      = "c8a160f0-0003-4e6a-9c1a-2f6a1b6d1000";
+const OTA_CH_STATUS    = "c8a160f0-0004-4e6a-9c1a-2f6a1b6d1000";
+const OTA_CH_VERSION   = "c8a160f0-0005-4e6a-9c1a-2f6a1b6d1000"; // есть только с прошивки v20+
+const OTA_CH_MODE      = "c8a160f0-0006-4e6a-9c1a-2f6a1b6d1000"; // есть только с прошивки v20+
+
+const MODE_NAMES = ["Взгляд назад", "Тормоз", "PowerUp", "Масслайк"];
+const OP_START = 0x01, OP_END = 0x02;
+const STATUS_RECEIVING = 0x01, STATUS_SUCCESS = 0x02, STATUS_ERROR = 0x03;
+
+const ERROR_NAMES = {
+  1: "не совпал размер файла — передача повреждена, попробуй ещё раз",
+  2: "не совпала контрольная сумма (MD5) — прошивка повреждена при передаче, попробуй ещё раз",
+  3: "ошибка записи во флеш-память устройства",
+  4: "устройство не смогло подготовить место под обновление (проверь, что у платы правильная разметка памяти)",
+  5: "устройство не готово к приёму — попробуй начать заново",
+};
+
+let device = null, server = null, ctrlChar = null, dataChar = null, statusChar = null, modeChar = null;
+let manualBuffer = null, manualMd5 = null;
+let latestManifest = null;   // { version, url, notes }
+let currentVersion = null;
+let lastStatus = null;
+
+const $ = id => document.getElementById(id);
+const log = msg => { const el = $("log"); el.textContent += msg + "\n"; el.scrollTop = el.scrollHeight; };
+
+if (!navigator.bluetooth) {
+  $("browserWarn").style.display = "block";
+  $("browserWarn").textContent =
+    "Этот браузер не поддерживает Bluetooth-подключение с веб-страниц. Открой эту страницу в Chrome или Edge " +
+    "на компьютере (Windows/Mac/Linux) или на Android-телефоне. На iPhone/iPad это не сработает ни в одном " +
+    "браузере (ограничение Apple) — нужен компьютер или Android-устройство рядом.";
+  $("btnConnect").disabled = true;
+} else {
+  $("browserWarn").style.display = "none";
+}
+
+$("fwFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) { manualBuffer = null; manualMd5 = null; $("fileInfo").textContent = "Файл не выбран"; updateButtons(); return; }
+  $("fileInfo").textContent = "Считаю контрольную сумму...";
+  manualBuffer = await file.arrayBuffer();
+  manualMd5 = md5ArrayBuffer(manualBuffer);
+  $("fileInfo").textContent = `${file.name} — ${manualBuffer.byteLength.toLocaleString("ru-RU")} байт, MD5: ${manualMd5}`;
+  updateButtons();
+});
+
+$("btnConnect").addEventListener("click", async () => {
+  try {
+    // Фильтр по имени ("Rulilka") ненадёжен: имя передаётся только в scan response,
+    // а не в основном рекламном пакете, и не на всех платформах Chrome его дожидается.
+    // Сервис 0xFC82 (Zwift), в отличие от имени, всегда в основном пакете — фильтр по
+    // нему находит устройство надёжнее.
+    log("Ищу устройство...");
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [0xFC82] }],
+      optionalServices: [OTA_SVC_UUID]
+    });
+    device.addEventListener("gattserverdisconnected", onDisconnected);
+
+    log("Подключаюсь...");
+    server = await device.gatt.connect();
+    const svc = await server.getPrimaryService(OTA_SVC_UUID);
+    ctrlChar = await svc.getCharacteristic(OTA_CH_CONTROL);
+    dataChar = await svc.getCharacteristic(OTA_CH_DATA);
+    statusChar = await svc.getCharacteristic(OTA_CH_STATUS);
+
+    await statusChar.startNotifications();
+    statusChar.addEventListener("characteristicvaluechanged", onStatusNotify);
+
+    $("connDot").className = "dot dot-on";
+    $("connText").textContent = `Подключено: ${device.name || "Rulilka"}`;
+    log("Подключено.");
+
+    try {
+      const verChar = await svc.getCharacteristic(OTA_CH_VERSION);
+      const val = await verChar.readValue();
+      currentVersion = new TextDecoder().decode(val);
+    } catch (e) {
+      currentVersion = null;
+    }
+    $("verCurrent").textContent = currentVersion ? currentVersion : "неизвестно (прошивка старее v20)";
+
+    try {
+      modeChar = await svc.getCharacteristic(OTA_CH_MODE);
+      const val = await modeChar.readValue();
+      renderModes(val.getUint8(0));
+      $("modeNote").textContent = "Нажми, чтобы сразу переключить активный режим.";
+    } catch (e) {
+      modeChar = null;
+      $("modeNote").textContent = "Недоступно на этой прошивке — нужна версия v20 и новее.";
+    }
+
+    updateButtons();
+    checkForUpdate();
+  } catch (err) {
+    log("Ошибка подключения: " + err.message);
+  }
+});
+
+function onDisconnected() {
+  $("connDot").className = "dot dot-off";
+  $("connText").textContent = "Отключено";
+  log("Соединение разорвано.");
+  modeChar = null;
+  renderModes(null);
+  $("modeNote").textContent = "Подключись к устройству, чтобы посмотреть и изменить режим.";
+}
+
+function renderModes(activeIndex) {
+  for (let i = 0; i < 4; i++) {
+    const btn = $("modeBtn" + i);
+    btn.disabled = !modeChar;
+    btn.classList.toggle("active", activeIndex === i);
+  }
+}
+
+for (let i = 0; i < 4; i++) {
+  $("modeBtn" + i).addEventListener("click", async () => {
+    if (!modeChar) return;
+    const m = i;
+    try {
+      await modeChar.writeValueWithResponse(new Uint8Array([m]));
+      renderModes(m);
+      log(`Режим переключён: ${MODE_NAMES[m]}.`);
+    } catch (err) {
+      log("Не удалось переключить режим: " + err.message);
+    }
+  });
+}
+
+function onStatusNotify(event) {
+  const data = new Uint8Array(event.target.value.buffer);
+  const code = data[0];
+  lastStatus = code;
+  if (code === STATUS_SUCCESS) {
+    log("Устройство подтвердило приём и проверку — перезагружается.");
+    $("successBanner").style.display = "block";
+  } else if (code === STATUS_ERROR) {
+    const errCode = data[1];
+    log("ОШИБКА: " + (ERROR_NAMES[errCode] || ("код " + errCode)));
+  }
+}
+
+async function checkForUpdate() {
+  $("verNote").className = "version-note";
+  $("verNote").textContent = "Проверяю сервер...";
+  try {
+    const resp = await fetch(MANIFEST_URL, { cache: "no-store" });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    latestManifest = await resp.json();
+    $("verLatest").textContent = latestManifest.version;
+
+    const cur = currentVersion !== null ? parseInt(currentVersion, 10) : -1;
+    const latest = parseInt(latestManifest.version, 10);
+
+    if (latest > cur) {
+      $("verNote").className = "version-note new";
+      $("verNote").textContent = `Доступна новая версия ${latestManifest.version}` +
+        (latestManifest.notes ? `: ${latestManifest.notes}` : "") + ".";
+    } else {
+      $("verNote").className = "version-note ok";
+      $("verNote").textContent = "У тебя установлена последняя версия.";
+    }
+  } catch (err) {
+    latestManifest = null;
+    $("verLatest").textContent = "не удалось проверить";
+    $("verNote").textContent = "Не удалось связаться с сервером обновлений (нет интернета или сервер ещё не настроен).";
+  }
+  updateButtons();
+}
+
+$("btnAutoUpdate").addEventListener("click", async () => {
+  if (!latestManifest || !latestManifest.url) return;
+  setUiBusy(true);
+  try {
+    log(`Скачиваю прошивку ${latestManifest.version} с сервера...`);
+    const resp = await fetch(latestManifest.url, { cache: "no-store" });
+    if (!resp.ok) throw new Error("не удалось скачать прошивку (HTTP " + resp.status + ")");
+    const buffer = await resp.arrayBuffer();
+    const md5 = md5ArrayBuffer(buffer);
+    log(`Скачано ${buffer.byteLength.toLocaleString("ru-RU")} байт.`);
+    await performUpdate(buffer, md5);
+  } catch (err) {
+    log("Ошибка: " + err.message);
+  } finally {
+    setUiBusy(false);
+  }
+});
+
+$("btnManualUpdate").addEventListener("click", async () => {
+  if (!manualBuffer || !ctrlChar) return;
+  setUiBusy(true);
+  try {
+    await performUpdate(manualBuffer, manualMd5);
+  } catch (err) {
+    log("Ошибка: " + err.message);
+  } finally {
+    setUiBusy(false);
+  }
+});
+
+async function performUpdate(buffer, md5hex) {
+  $("successBanner").style.display = "none";
+  $("progressBar").style.width = "0%";
+  $("progressPct").textContent = "0%";
+  lastStatus = null;
+
+  const size = buffer.byteLength;
+  const startPayload = new Uint8Array(1 + 4 + 32);
+  startPayload[0] = OP_START;
+  startPayload[1] = size & 0xFF;
+  startPayload[2] = (size >> 8) & 0xFF;
+  startPayload[3] = (size >> 16) & 0xFF;
+  startPayload[4] = (size >> 24) & 0xFF;
+  for (let i = 0; i < 32; i++) startPayload[5 + i] = md5hex.charCodeAt(i);
+
+  log("Отправляю START...");
+  await ctrlChar.writeValueWithResponse(startPayload);
+  await sleep(300);
+  if (lastStatus === STATUS_ERROR) throw new Error("устройство отклонило START");
+
+  log("Передаю прошивку...");
+  let chunkSize = 200;
+  let offset = 0;
+  const bytes = new Uint8Array(buffer);
+  while (offset < size) {
+    const end = Math.min(offset + chunkSize, size);
+    const chunk = bytes.slice(offset, end);
+    try {
+      await dataChar.writeValueWithResponse(chunk);
+    } catch (writeErr) {
+      const msg = (writeErr && writeErr.message) || "";
+      if (/disconnected|not connected|gatt/i.test(msg) && !device.gatt.connected) {
+        throw new Error("соединение с устройством потеряно во время передачи — переподключись и попробуй снова");
+      }
+      if (chunkSize > 20) {
+        chunkSize = Math.max(20, Math.floor(chunkSize / 2));
+        log(`Уменьшаю размер порции до ${chunkSize} байт и продолжаю...`);
+        continue;
+      }
+      throw writeErr;
+    }
+    offset = end;
+    const pct = Math.round((offset / size) * 100);
+    $("progressBar").style.width = pct + "%";
+    $("progressPct").textContent = pct + "% (" + offset.toLocaleString("ru-RU") + " байт)";
+    if (lastStatus === STATUS_ERROR) throw new Error("ошибка во время передачи");
+  }
+
+  log("Отправляю END (проверка на устройстве)...");
+  try {
+    await ctrlChar.writeValueWithResponse(new Uint8Array([OP_END]));
+  } catch (e) {
+    log("(соединение прервалось при END — это нормально, если обновление прошло успешно)");
+  }
+  await sleep(2000);
+
+  if (lastStatus === STATUS_SUCCESS || lastStatus === null) {
+    $("successBanner").style.display = "block";
+    log("Готово.");
+  } else if (lastStatus === STATUS_ERROR) {
+    log("Обновление завершилось ошибкой — старая прошивка осталась активной.");
+  }
+}
+
+function setUiBusy(busy) {
+  $("btnAutoUpdate").disabled = busy || !readyForAuto();
+  $("btnManualUpdate").disabled = busy || !readyForManual();
+  $("btnConnect").disabled = busy;
+  $("fwFile").disabled = busy;
+  for (let i = 0; i < 4; i++) $("modeBtn" + i).disabled = busy || !modeChar;
+}
+function readyForAuto() { return !!(ctrlChar && latestManifest && latestManifest.url); }
+function readyForManual() { return !!(ctrlChar && manualBuffer); }
+function updateButtons() {
+  $("btnAutoUpdate").disabled = !readyForAuto();
+  $("btnManualUpdate").disabled = !readyForManual();
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+window.addEventListener("beforeunload", (e) => {
+  if (($("btnAutoUpdate").disabled === false || $("btnManualUpdate").disabled === false) && lastStatus === STATUS_RECEIVING) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+</script>
+</body>
+</html>
