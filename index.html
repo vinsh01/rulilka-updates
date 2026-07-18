@@ -562,7 +562,7 @@ async function performUpdate(buffer, md5hex) {
   if (lastStatus === STATUS_ERROR) throw new Error("устройство отклонило START");
 
   log("Передаю прошивку...");
-  let chunkSize = 200;
+  let chunkSize = 500;
   let offset = 0;
   const bytes = new Uint8Array(buffer);
   while (offset < size) {

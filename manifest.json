@@ -1,5 +1,5 @@
 {
-  "version": "25",
-  "url": "https://vinsh01.github.io/rulilka-updates/zwift_click_v25_ota_fast_upload.ino.bin",
-  "notes": "Скомпилировано 18.07.2026 из firmware/zwift_click_v25_ota_fast_upload (arduino-cli, esp32:esp32:esp32da, ядро 3.0.7). Функционально как v24 (руление + все 4 режима запасной кнопки + переключение удержанием LEFT+RIGHT 10 сек), плюс ускорение OTA: характеристика OTA_CH_DATA теперь принимает Write Command (без ответа), страница пишет чанки через writeValueWithoutResponse вместо writeValueWithResponse — устраняет по одному ATT round trip на каждые 200 байт, который на Mac/Chrome (CoreBluetooth) делал обновление очень медленным."
+  "version": "26",
+  "url": "https://vinsh01.github.io/rulilka-updates/zwift_click_v26_ota_conn_interval.ino.bin",
+  "notes": "Скомпилировано 18.07.2026 из firmware/zwift_click_v26_ota_conn_interval (arduino-cli, esp32:esp32:esp32da, ядро 3.0.7). v25 (write-without-response) дала лишь небольшое ускорение — похоже, узкое место в самом BLE connection interval, который прошивка раньше не запрашивала явно. Добавлено: при подключении прошивка просит короткий интервал (7.5-15 мс) через BLEServer::updateConnParams. Плюс страница обновления передаёт чанки по 500 байт вместо 200 (меньше вызовов записи на ту же прошивку)."
 }
