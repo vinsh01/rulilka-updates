@@ -361,6 +361,7 @@ let manualBuffer = null, manualMd5 = null;
 let latestManifest = null;   // { version, url, notes }
 let currentVersion = null;
 let lastStatus = null;
+let otaConfirmedBytes = 0;   // сколько байт устройство реально подтвердило (из notify OTA_CH_STATUS)
 
 const $ = id => document.getElementById(id);
 const log = msg => { const el = $("log"); el.textContent += msg + "\n"; el.scrollTop = el.scrollHeight; };
@@ -474,7 +475,9 @@ function onStatusNotify(event) {
   const data = new Uint8Array(event.target.value.buffer);
   const code = data[0];
   lastStatus = code;
-  if (code === STATUS_SUCCESS) {
+  if (code === STATUS_RECEIVING && data.length >= 5) {
+    otaConfirmedBytes = data[1] | (data[2] << 8) | (data[3] << 16) | (data[4] << 24);
+  } else if (code === STATUS_SUCCESS) {
     log("Устройство подтвердило приём и проверку — перезагружается.");
     $("successBanner").style.display = "block";
   } else if (code === STATUS_ERROR) {
@@ -548,6 +551,7 @@ async function performUpdate(buffer, md5hex) {
   lastStatus = null;
 
   const size = buffer.byteLength;
+  otaConfirmedBytes = 0;
   const startPayload = new Uint8Array(1 + 4 + 32);
   startPayload[0] = OP_START;
   startPayload[1] = size & 0xFF;
@@ -563,9 +567,14 @@ async function performUpdate(buffer, md5hex) {
 
   log("Передаю прошивку...");
   let chunkSize = 500;
+  const OTA_WINDOW = 4096; // не уходить в отрыв от подтверждённого устройством прогресса больше чем на столько байт
   let offset = 0;
   const bytes = new Uint8Array(buffer);
   while (offset < size) {
+    while (offset - otaConfirmedBytes > OTA_WINDOW) {
+      if (lastStatus === STATUS_ERROR) throw new Error("ошибка во время передачи");
+      await sleep(3);
+    }
     const end = Math.min(offset + chunkSize, size);
     const chunk = bytes.slice(offset, end);
     try {
@@ -583,11 +592,24 @@ async function performUpdate(buffer, md5hex) {
       throw writeErr;
     }
     offset = end;
-    const pct = Math.round((offset / size) * 100);
+    const pct = Math.round((otaConfirmedBytes / size) * 100);
     $("progressBar").style.width = pct + "%";
-    $("progressPct").textContent = pct + "% (" + offset.toLocaleString("ru-RU") + " байт)";
+    $("progressPct").textContent = pct + "% (" + otaConfirmedBytes.toLocaleString("ru-RU") + " байт, отправлено " + offset.toLocaleString("ru-RU") + ")";
     if (lastStatus === STATUS_ERROR) throw new Error("ошибка во время передачи");
   }
+
+  log("Жду подтверждения устройством всех байт...");
+  const waitStart = Date.now();
+  while (otaConfirmedBytes < size) {
+    if (lastStatus === STATUS_ERROR) throw new Error("ошибка во время передачи");
+    if (Date.now() - waitStart > 15000) {
+      log(`Устройство подтвердило только ${otaConfirmedBytes.toLocaleString("ru-RU")} из ${size.toLocaleString("ru-RU")} байт за 15с — часть данных, похоже, потерялась.`);
+      break;
+    }
+    await sleep(20);
+  }
+  $("progressBar").style.width = "100%";
+  $("progressPct").textContent = "100% (" + otaConfirmedBytes.toLocaleString("ru-RU") + " байт)";
 
   log("Отправляю END (проверка на устройстве)...");
   try {
