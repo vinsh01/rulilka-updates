@@ -1,5 +1,5 @@
 {
-  "version": "22",
-  "url": "https://vinsh01.github.io/rulilka-updates/zwift_click_v22_test_production.ino.bin",
-  "notes": "Скомпилировано 06.07.2026 из firmware/zwift_click_v22_test_production (arduino-cli, esp32:esp32:esp32da, ядро 3.0.7)."
+  "version": "24",
+  "url": "https://vinsh01.github.io/rulilka-updates/zwift_click_v24_ota_version_bump.ino.bin",
+  "notes": "Скомпилировано 18.07.2026 из firmware/zwift_click_v24_ota_version_bump (arduino-cli, esp32:esp32:esp32da, ядро 3.0.7). Функционально идентична v22: руление + все 4 режима запасной кнопки (взгляд назад/тормоз/PowerUp/масслайк) + переключение удержанием LEFT+RIGHT 10 сек. Тестовое обновление для проверки полного цикла автообновления через веб-страницу поверх текущей v23 (2 функции)."
 }
