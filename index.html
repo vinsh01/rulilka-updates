@@ -569,7 +569,7 @@ async function performUpdate(buffer, md5hex) {
     const end = Math.min(offset + chunkSize, size);
     const chunk = bytes.slice(offset, end);
     try {
-      await dataChar.writeValueWithResponse(chunk);
+      await dataChar.writeValueWithoutResponse(chunk);
     } catch (writeErr) {
       const msg = (writeErr && writeErr.message) || "";
       if (/disconnected|not connected|gatt/i.test(msg) && !device.gatt.connected) {
