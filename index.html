@@ -566,19 +566,31 @@ async function performUpdate(buffer, md5hex) {
   if (lastStatus === STATUS_ERROR) throw new Error("устройство отклонило START");
 
   log("Передаю прошивку...");
-  let chunkSize = 500;
+  const useWriteWithoutResponse = dataChar.properties.writeWithoutResponse;
+  let chunkSize = useWriteWithoutResponse ? 500 : 200;
+  log(useWriteWithoutResponse ? "Ускоренная передача." : "Передача с подтверждением (совместимость с v23).");
+  let lastConfirmed = 0;
+  let lastProgressAt = Date.now();
   const OTA_WINDOW = 4096; // не уходить в отрыв от подтверждённого устройством прогресса больше чем на столько байт
   let offset = 0;
   const bytes = new Uint8Array(buffer);
   while (offset < size) {
     while (offset - otaConfirmedBytes > OTA_WINDOW) {
+      if (!device.gatt.connected) throw new Error("соединение с устройством потеряно");
+      if (otaConfirmedBytes !== lastConfirmed) { lastConfirmed = otaConfirmedBytes; lastProgressAt = Date.now(); }
+      if (Date.now() - lastProgressAt > 15000) throw new Error("устройство не подтверждает приём данных — переподключись и повтори обновление");
       if (lastStatus === STATUS_ERROR) throw new Error("ошибка во время передачи");
       await sleep(3);
     }
     const end = Math.min(offset + chunkSize, size);
     const chunk = bytes.slice(offset, end);
     try {
-      await dataChar.writeValueWithoutResponse(chunk);
+      if (useWriteWithoutResponse) {
+        await dataChar.writeValueWithoutResponse(chunk);
+      } else {
+        await dataChar.writeValueWithResponse(chunk);
+      }
+      if (otaConfirmedBytes !== lastConfirmed) { lastConfirmed = otaConfirmedBytes; lastProgressAt = Date.now(); }
     } catch (writeErr) {
       const msg = (writeErr && writeErr.message) || "";
       if (/disconnected|not connected|gatt/i.test(msg) && !device.gatt.connected) {
@@ -604,7 +616,7 @@ async function performUpdate(buffer, md5hex) {
     if (lastStatus === STATUS_ERROR) throw new Error("ошибка во время передачи");
     if (Date.now() - waitStart > 15000) {
       log(`Устройство подтвердило только ${otaConfirmedBytes.toLocaleString("ru-RU")} из ${size.toLocaleString("ru-RU")} байт за 15с — часть данных, похоже, потерялась.`);
-      break;
+      throw new Error("не подтверждён приём всей прошивки; обновление не завершено");
     }
     await sleep(20);
   }
@@ -619,7 +631,7 @@ async function performUpdate(buffer, md5hex) {
   }
   await sleep(2000);
 
-  if (lastStatus === STATUS_SUCCESS || lastStatus === null) {
+  if (lastStatus === STATUS_SUCCESS) {
     $("successBanner").style.display = "block";
     log("Готово.");
   } else if (lastStatus === STATUS_ERROR) {
