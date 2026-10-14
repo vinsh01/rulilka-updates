@@ -1,0 +1,9 @@
+{
+  "family": "RULILKA-MYWHOOSH-ESP32-OTA1",
+  "version": "1.3.1-steering-ota",
+  "url": "rulilka-mywhoosh-1.3.1.bin",
+  "bytes": 1829968,
+  "sha256": "2a5c6034a15308830cc9efd4b7a1f17c8a79fc7bb560ef4c6391c6aa2093251a",
+  "md5": "2ed8e9229ed11094a1185d579b4148dc",
+  "notes": "Руление через Wi-Fi или Bluetooth-клавиатуру; обновление через сайт по Bluetooth."
+}
