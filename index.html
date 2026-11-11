@@ -103,6 +103,12 @@
   .version-note { font-size: 13px; color: var(--text-dim); margin: 10px 0 14px; line-height: 1.5; }
   .version-note.ok { color: var(--ok); }
   .version-note.new { color: var(--accent); }
+  .release-history { list-style: none; padding: 0; margin: 0; }
+  .release-history > li { padding: 12px 0; }
+  .release-history > li + li { border-top: 1px solid var(--border); }
+  .release-history h3 { font-size: 15px; margin: 0 0 6px; }
+  .release-history ul { padding-left: 20px; color: var(--text-dim); font-size: 14px; line-height: 1.5; }
+  .release-history ul li + li { margin-top: 4px; }
   .progress-outer { height: 10px; border-radius: 6px; background: #14161a; overflow: hidden; margin: 12px 0 4px; }
   .progress-inner { height: 100%; width: 0%; background: var(--accent); transition: width 0.15s; }
   .progress-pct { font-size: 12px; color: var(--text-dim); text-align: right; }
@@ -189,6 +195,33 @@
     </div>
     <button class="btn-primary" id="btnAutoUpdate" disabled>Скачать и установить последнюю версию</button>
   </div>
+
+  <details class="card" id="firmware-history">
+    <summary>История обновлений прошивки для Zwift</summary>
+    <ol class="release-history">
+      <li>
+        <h3>v28 · Исправления для Рулилки 4.1</h3>
+        <ul>
+          <li>Короткое нажатие левой кнопки больше не меняет масштаб карты.</li>
+          <li>Рулилка поддерживает связь во время пауз между нажатиями, чтобы Zwift не показывал «Connection Failure».</li>
+        </ul>
+      </li>
+      <li>
+        <h3>v26 · Четыре режима Рулилки 4.1</h3>
+        <ul>
+          <li>Для нажатия обеих кнопок можно выбрать одно из четырёх действий: взгляд назад, тормоз, PowerUp или раздачу Ride On.</li>
+          <li>Режим можно сменить на этой странице или удержанием обеих кнопок в Zwift. Выбор сохраняется после отключения питания.</li>
+          <li>Ускорена передача прошивки по Bluetooth.</li>
+        </ul>
+      </li>
+      <li>
+        <h3>v23 · Стартовая прошивка Рулилки 4.0</h3>
+        <ul>
+          <li>Две кнопки управляют поворотами влево и вправо. Одновременное нажатие включает взгляд назад.</li>
+        </ul>
+      </li>
+    </ol>
+  </details>
 
   <div class="card">
     <h2>Режим запасной кнопки (LEFT+RIGHT)</h2>
