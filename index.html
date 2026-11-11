@@ -183,6 +183,10 @@
     <div class="version-row"><span class="label">Установлена сейчас:</span><span id="verCurrent">—</span></div>
     <div class="version-row"><span class="label">Доступна на сервере:</span><span id="verLatest">—</span></div>
     <div class="version-note" id="verNote">Подключись к устройству, чтобы проверить.</div>
+    <div class="version-note" id="releaseNotes" hidden>
+      <strong id="releaseNotesTitle"></strong>
+      <div id="releaseNotesBody"></div>
+    </div>
     <button class="btn-primary" id="btnAutoUpdate" disabled>Скачать и установить последнюю версию</button>
   </div>
 
@@ -494,20 +498,25 @@ async function checkForUpdate() {
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     latestManifest = await resp.json();
     $("verLatest").textContent = latestManifest.version;
+    $("releaseNotesTitle").textContent = `Что исправлено в версии ${latestManifest.version}`;
+    $("releaseNotesBody").textContent = latestManifest.notes || "";
+    $("releaseNotes").hidden = !latestManifest.notes;
 
     const cur = currentVersion !== null ? parseInt(currentVersion, 10) : -1;
     const latest = parseInt(latestManifest.version, 10);
 
-    if (latest > cur) {
+    if (!device?.gatt.connected) {
+      $("verNote").textContent = "Подключись к Рулилке, чтобы проверить установленную версию.";
+    } else if (latest > cur) {
       $("verNote").className = "version-note new";
-      $("verNote").textContent = `Доступна новая версия ${latestManifest.version}` +
-        (latestManifest.notes ? `: ${latestManifest.notes}` : "") + ".";
+      $("verNote").textContent = `Доступна новая версия ${latestManifest.version}.`;
     } else {
       $("verNote").className = "version-note ok";
       $("verNote").textContent = "У тебя установлена последняя версия.";
     }
   } catch (err) {
     latestManifest = null;
+    $("releaseNotes").hidden = true;
     $("verLatest").textContent = "не удалось проверить";
     $("verNote").textContent = "Не удалось связаться с сервером обновлений (нет интернета или сервер ещё не настроен).";
   }
@@ -660,6 +669,8 @@ window.addEventListener("beforeunload", (e) => {
     e.returnValue = "";
   }
 });
+
+checkForUpdate();
 </script>
 </body>
 </html>
